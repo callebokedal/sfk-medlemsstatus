@@ -1,0 +1,343 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<meta name="referrer" content="strict-origin">
+    <title>Excel till etiketter</title>
+	<!--<link href="lib/bootstrap-5.0.1/css/bootstrap.min.css" rel="stylesheet">-->
+	<link href="lib/css/bootstrap.min.css" rel="stylesheet">
+	<link href="lib/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+	<link href="lib/css/select.dataTables.min.css" rel="stylesheet">
+	<link href="lib/css/style.css" rel="stylesheet">
+	<link rel="icon" href="lib/img/favicon.svg">
+	<link rel="apple-touch-icon" href="lib/img/favicon.ico">
+    <script src="lib/js/external/jquery-3.6.0.min.js"></script>
+    <script src="lib/js/external/jquery.dataTables.js"></script>
+    <script src="lib/js/external/natural.js"></script>
+    <script src="lib/js/external/dataTables.select.min.js"></script>
+    <script src="lib/js/external/dataTables.bootstrap5.min.js"></script>
+    <script src="lib/js/external/lodash.min.js"></script>
+    <script src="lib/js/external/xlsx.full.min.js"></script>
+    <script src="lib/js/external/routie.min.js"></script>
+    <script src="lib/js/icons.js"></script>
+    <script src="lib/js/helpers.js"></script>
+    <script src="lib/js/app.js"></script>
+    <script src="lib/js/routers.js"></script>
+</head>
+<body>
+
+	<nav class="navbar navbar-dark shadow-sm no-print">
+		<div class="container">
+			<a class="navbar-brand" href="#">
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people-fill" viewBox="0 0 16 16">
+				<path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+				<path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/>
+				<path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
+			</svg>
+			Sjövalla FK - Medlemsstatus
+			</a>
+		</div>
+	</nav>
+
+	<script type="text/template" id="groupsTemplate">
+		<% 
+		let hidden = []; // Remember 'hidden' ones a while
+		_.forEach(data, function(groupname, idx) {
+			grp = groupToObject(groupname); // Decorate with useful info
+			if (grp.hidden && !_.isEmpty(grp.name)) {
+				hidden.push(grp.name);
+			}
+			let className = " btn-primary"
+			if(grp.family) {
+				className = " btn-dark"
+			}
+			if (!grp.hidden) {
+		%>
+		<%= grp.family?'<input class="btn btn-sm'+className+' mb-1" type="button" value="'+grp.name+'" title="'+grp.name+'">':'<input class="btn btn-sm btn-primary mb-1" type="button" value="'+grp.name+'" title="'+grp.name+'">' %>
+		<% }}); 
+		if(!_.isEmpty(hidden)) { %>
+			<%= '<input class="btn btn-sm btn-secondary mb-1" type="button" value="..." title="'+_.join(hidden,', ')+'">' %>
+		<% }
+		%>
+	</script>
+	<script type="text/template" id="rolesTemplate">
+		<% 
+		let hidden = []; // Remember 'hidden' ones a while
+		_.forEach(data, function(rolesname, idx) {
+			role = roleToObject(rolesname);
+			if (role.hidden && !_.isEmpty(role.name)) {
+				hidden.push(role.name);
+			}
+		%>
+		<%= '<input class="btn btn-sm btn-success mb-1" type="button" value="'+role.name+'" title="'+role.fullname+'">' %>
+		<% }); 
+		if(!_.isEmpty(hidden)) { %>
+			<%= '<input class="btn btn-sm btn-secondary mb-1" type="button" value="..." title="'+_.join(hidden,', ')+'">' %>
+		<% } %>
+	</script>
+
+	<script type="text/template" id="listTemplate">
+		<div class="container">
+			<!--<table class="table table-sm table-striped table-hover members" id="membersList"> -->
+			<table class="table table-sm table-striped display compact" style="width:100%" id="membersList">
+				<thead>
+				<tr>
+					<th scope="col"></th>
+					<th scope="col">ID</th>
+					<th scope="col">Förnamn</th>
+					<th scope="col">Efternamn</th>
+					<th scope="col">Ålder</th>
+					<th scope="col">Medlem*</th>
+					<th scope="col">Medlem&nbsp;sedan</th>
+					<th scope="col">Reg.&nbsp;datum</th>
+					<th scope="col">Grupper*</th>
+				</tr>
+				</thead>
+				<tbody>
+				<% 
+				_.forEach(persons, function(person, idx) {
+					let member_no_years = person.membersince!=""?age(person.membersince):"";
+					let member_year_tag = "";
+					if(member_no_years == "0 år") {
+						member_year_tag = '<span class="badge bg-success">Ny i år!</span>'
+					} else if(member_no_years != "") {
+						member_year_tag = '<span class="badge bg-secondary">'+member_no_years+'</span>'
+					}
+					%>
+					<tr>
+						<th scope="row"><input class="form-check-input" type="checkbox" value=""></th>
+						<th scope="row"><%= person.id %></th>
+						<td><%= person.firstname %></td>
+						<td><%= person.lastname %></td>
+						<td class="text-end"><%= age(person.age) %></td>
+						<td><%= invokeTemplate('rolesTemplate', person.roles) %></td>
+						<td class="text-center"><%= person.membersince %>
+							<br><%= member_year_tag %></td>
+						<td><%= person.regdate %></td>
+						<td><%= invokeTemplate('groupsTemplate', person.groups) %></td>
+					</tr>
+				<% }); %>
+			</tbody>
+			<tfoot>
+			<tr>
+				<th scope="col"></th>
+				<th scope="col">ID</th>
+				<th scope="col">Förnamn</th>
+				<th scope="col">Efternamn</th>
+				<th scope="col">Ålder</th>
+				<th scope="col">Medlem*</th>
+				<th scope="col">Medlem&nbsp;sedan</th>
+				<th scope="col">Reg.&nbsp;datum</th>
+				<th scope="col">Grupper*</th>
+			</tr>
+			</tfoot>
+			</table>
+		</div>
+	</script>
+
+	<!-- Old Template -->
+	<script type="text/template" id="listTemplateOld">
+		<div class="row page">
+			<% 
+			let idx = 0;
+			_.forEach(persons, function(person) {
+				if(idx == 24) {
+					idx = 0; %>
+		</div>
+		<div class="page-break"></div>
+		<div class="row page">
+				<% }
+				%><div class="col col-4 pb-4 border fs-6 person <%= person.print?' bg-success-light':' no-print bg-danger-light' %>">
+					<div class="float-end text-end no-print">
+						<!-- <a href="#toggle/<%= person.id %>" class="btn mt-1 btn-sm toggler <%= person.print?'btn-success':'btn-danger' %>" id="<%= person.id %>"><%= person.print?printIcon:noPrintIcon %></a> -->
+						<div><small class="text-sm text-muted"><%= person.nopaper?noPaperIcon:placeholderIcon %></small></div>
+						<div><small class="text-muted"><%= person.familyHead?familyHeadIcon:placeholderIcon %></small></div>
+						<div><small class="text-muted"><%= person.familyMember?familyMemberIcon:placeholderIcon %></small></div>
+						<div><small class="text-muted"><%= person.householdHead?householdHeadIcon:placeholderIcon %></small></div>
+						<div><small class="text-muted"><%= person.householdMember?householdMemberIcon:placeholderIcon %></small></div>
+					</div>
+					<div class="name" <%= person.family?'title="Familj: ' +person.family+'"':'' %>><%= person.name %><small class="text-muted no-print"> (<%= hiddenIcon %> <%= age(person.birthDate) %><%= person.family?', '+person.family:''%>)</small></div>
+					<!--<div class="streetaddress"><%= person.streetaddress %></div>
+					<div class="postaladdress"><%= person.postalcode %> <%= person.postaladdress %></div>-->
+					<div>Medlem sedan: <%= person.streetaddress %></div>
+				</div>
+			<% if(person.print) {idx++};
+			}); %>
+		</div>
+	</script>
+
+	<div class="container no-print">
+		<h4 class="mt-3">Instruktioner</h4>
+		<ul class="list-group mb-4">
+			<li class="list-group-item">1. Exportera en Excel-fil med medlemmar från <a href="https://www.sjovalla.se" target="_blank">Idrott Online</a>
+				<ul class="list-group mb-1">
+					<li class="list-group-item">A. Logga in som vanligt</li>
+					<li class="list-group-item">B. Gå till <span class="fw-bold">Administration</span> &raquo; <span class="fw-bold">Personer</span></li>
+					<li class="list-group-item">C. Klicka på Sök (dvs. sök på alla medlemmar)</li>
+					<li class="list-group-item">D. Välj <span class="fw-bold">Exportera</span> &raquo; <span class="fw-bold">Exportera till Excel</span></li>
+					<li class="list-group-item">E. Välj <span class="fw-bold">Exportera med födelsedatum</span> samt <span class="fw-bold">Exkludera målsman</span></li>
+					<li class="list-group-item">F. Klicka <span class="fw-bold">Exportera</span></li>
+				</ul>
+			</li>
+			<li class="list-group-item">2. Spara Excel-filen på din dator</li>
+			<li class="list-group-item">3. Gå till denna sida och läs in Excel-filen:
+				<form class="row g-3 my-1">
+					<div class="col-auto">
+						<input class="form-control" type="file" id="formFile" accept=".xls,.xlsx,.xlsb">
+					</div>
+					<div class="col-auto">
+						<a href="#upload" class="btn btn-primary">Läs in fil</a>
+					</div>
+				</form>
+			</li>
+			<!--<li class="list-group-item">4. Välj "Skriv ut" i webbläsaren</li>-->
+		</ul>
+		<div class="alert alert-success d-none" role="alert">
+			<h4 class="alert-heading">Resultat</h4>
+			<p class="mb-0" id="report"></p>
+		</div>
+		<div class="alert alert-danger d-none" role="alert">
+			<h4 class="alert-heading">Felaktiga</h4>
+			<p class="mb-0" id="invalid"></p>
+		</div>
+	</div>
+
+	<div class="container no-print mb-4">
+		<!--<div id="printController">
+			<a href="#selectall" class="btn btn-primary disabled">Markera alla för utskrift</a>
+			<a href="#deselectall" class="btn btn-primary disabled">Avmarkera alla från utskrift</a>
+			<a href="#savereport" class="ms-4 btn btn-primary disabled">Spara rapport</a>
+		</div>-->
+		<small>Du kan alltid läsa in filen igen för att "återställa"</small>
+	</div>
+
+	<div class="container-fluid">
+		<div id="pageBody"></div>
+	</div>
+
+    <script>
+		'use strict';
+		let debug = false;
+
+		let processExcel = (data) => {
+			//console.log("index.html: processExcel");
+			//Read the Excel File data.
+			let workbook = XLSX.read(data, {
+				type: 'binary'
+			});
+	
+			//Fetch the name of First Sheet.
+			let firstSheet = workbook.SheetNames[0];
+	
+			//Read all rows from First Sheet into an JSON array.
+			let excelRows = XLSX.utils.sheet_to_row_object_array(workbook.Sheets[firstSheet]);
+			
+			// For testing purposes, to limit the result in "size"
+			let i=0;
+
+			let persons = []; 
+			for (let person of excelRows) {
+				if(i<50000) {
+					i++;
+					persons.push(_.pick(person, ['Typ','Förnamn', 'Efternamn',
+						'IdrottsID', 'Födelsedat./Personnr.',
+						'E-post privat', 'E-post arbete',
+						'Roller', 'Övrig medlemsinfo', 
+						'Folkbokföring - Gatuadress',
+						'Folkbokföring - Postnummer',
+						'Folkbokföring - Postort',
+						'Folkbokföring - c/o adress',
+						'Familj', 'Fam.Admin', 
+						'Kontaktadress - Gatuadress',
+						'Kontaktadress - Postnummer',
+						'Kontaktadress - Postort',
+						'Kontaktadress - c/o adress',
+						'Grupp/Lag/Arbetsrum/Familj',
+						'Medlem sedan','Medlem t.o.m.','Registreringsdatum'
+					]));
+				}
+			}
+
+			// Rename/convert properties
+			persons = persons.map((p) => {
+
+				let result = { 
+					id: _.trim(p['IdrottsID']),
+					firstname: _.trim(p['Förnamn']),
+					lastname: _.trim(p['Efternamn']),
+					age: _.trim(p['Födelsedat./Personnr.']),
+					family: _.trim(p['Familj']),
+					groups: _.isEmpty(p['Grupp/Lag/Arbetsrum/Familj'])?[]:_.map(_.split(p['Grupp/Lag/Arbetsrum/Familj'], ','), _.trim),
+					birthDate: _.trim(p['Födelsedat./Personnr.']),
+					roles: _.map(_.split(p['Roller'], ','), _.trim),
+					membersince: _.trim(p['Medlem sedan']),
+					regdate: _.trim(p['Registreringsdatum'])
+				};
+
+				if(_.trim(p['Folkbokföring - Gatuadress']) != "") {
+					// Assume we have Folkbokföringsadress
+					return _.assignIn(result, {
+						streetaddress: _.trim(p['Folkbokföring - Gatuadress']),
+						postalcode: _.trim(p['Folkbokföring - Postnummer']),
+						postaladdress: _.trim(p['Folkbokföring - Postort']),
+						co_address: _.trim(p['Folkbokföring - c/o adress']),
+						type: 'default',
+						householdKey: _.replace(_.lowerCase(_.trim(p['Folkbokföring - Gatuadress'])+_.trim(p['Folkbokföring - Postort'])),/ /g,'')
+					})
+				} else {
+					// Fallback to Kontaktadress
+					return _.assignIn(result, {
+						streetaddress: _.trim(p['Kontaktadress - Gatuadress']),
+						postalcode: _.trim(p['Kontaktadress - Postnummer']),
+						postaladdress: _.trim(p['Kontaktadress - Postort']),
+						co_address: _.trim(p['Kontaktadress - c/o adress']),
+						type: 'contact-address',
+						householdKey: _.replace(_.lowerCase(_.trim(p['Kontaktadress - Gatuadress'])+_.trim(p['Kontaktadress - Postort'])),/ /g,'')
+					})
+				}
+			});
+
+			console.debug("persons initiaized: ", persons)
+
+			// Mark member status
+			//persons = _.map(persons, markMemberStatus);
+
+			// Mark MC_IngenTidning
+			persons = _.map(persons, markIngenTidning);
+
+			// Keep only one per family
+			persons = _.sortBy(persons, [function(p) { return p.birthDate; }]); // To get oldest person as family representant
+			//persons = _.sortBy(persons, [function(p) { return p.firstname; }]); // To get oldest person as family representant
+			persons = _.map(persons, markFamilyRepresentant, persons);
+
+			// Only one per address
+			//let householdList = []; // Keep track of "households" - to avoid duplicates per household
+			// Sort again by age - not sure if filter above affects order or not
+			persons = _.sortBy(persons, [function(p) { return p.birthDate; }]); // To get oldest person as family representant
+			persons = _.map(persons, markOnePerHousehold, persons);
+
+			// Sort by postnummer - by request
+			//persons = _.sortBy(persons, [function(p) { return p.postalcode; }]);
+
+			persons = _.sortBy(persons, [function(p) { return p.firstname; }]);
+
+			// Save result
+			sessionStorage.setItem("sfk-members-list", JSON.stringify(persons));
+			//console.log("index.html: list stored");
+
+			// Active function-buttons
+			// $("#printController a").toggleClass("disabled", false);
+
+			// Show
+			routie.navigate("list");
+		};
+
+		document.addEventListener('DOMContentLoaded', function (event) {
+			console.log("Ready!");
+			setupRouters();
+			routie("");
+		});
+    </script>
+</body>
+</html>

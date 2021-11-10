@@ -2,6 +2,8 @@
 
 Start
 
+https://callebokedal.github.io/sfk-medlemsstatus/
+
 ## Data tables
 
 https://datatables.net/
